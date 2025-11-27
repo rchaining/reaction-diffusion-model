@@ -1,0 +1,81 @@
+Reaction-Diffusion Model or Turing Patterns
+https://en.wikipedia.org/wiki/Turing_pattern
+Chemicals A and B
+A creates more A as well as B
+B inhibits creation of A
+
+D_A, D_b: Diffusion rates for A, B
+F: Feed rate of A
+K: Kill rate of B
+L_A, L_B: Laplacian of A, B
+
+Grey-Scott Model
+A_(t+1) = A(t) + D_A x L_A(t) - A x B^2 + F x (1 - A)
+B_(t+1) = B(t) + D_B x L_B(t) + A x B^2 - (F + K) x B
+
+General Plan
+Shim:
+* Objective-C shim that gets the app running, creates a metal layer to send to the Renderer.
+* If simple, main loop lives in Renderer, and Obj-C shim sends a shutdown signal.
+* Otherwise, shim owns main loop and calls Renderer::draw().
+
+Config:
+* Loaded from a JSON file.
+* Defines F, K, D_A, D_B
+* Defines initial conditions for A, B concentration
+  * (Initial condition could be parameters for a noise fn??)
+* Define simargs here, which should map to a struct in the shader.
+
+Renderer:
+* Owns tex1 and tex2. Each simulation step you flip between which is read and which is written to.
+  * state of the world: whatever is the input tex
+  * sim output: whatever is the output tex
+* Initialize: Load config, generate starting condition tex. Misc initialization
+* Draw:
+  * Simulation step:
+    * Send state of the world tex to the gpu
+    * Set gpu output to sim output tex
+  * Visualization step:
+    * Put sim output tex into a metal drawable
+    * Send it to the gpu
+  * These two might be a pipeline I configure and then the whole
+    process just runs on the GPU (hopefully)
+
+-- Shader code --
+compute shader (called a kernel function in metal)
+(The robot desperately wants me to bake in the threadgroup memory optimizations from the start,
+but we're learning first so I'm going to read the textures from VRAM first and we'll do threadgroup
+memory optimization later.)
+
+struct simout {
+  float4 A;
+  float4 B;
+};
+
+kernel simout simulation(
+  texture2d<float, access:read> inputTexture [[texture(0)]],
+  texture2d<float, access:write> outputTexture [[texture(1)]],
+  constant simargs* args [[buffer(0)]],
+  uint2 gid [[thread_position_in_grid]] // V1 we'll do it stupid and read tex values from VRAM. V2 we'll be smarter.
+)
+{
+  ...
+}
+
+// Might need a post-processor to setup a screen space quad to render a texture to?
+// But I do wonder if we can just do this as is right here?
+fragment float4 visualization(simout simout [[stage_in]]) {
+  // compute A and B into colors.
+  // This is run once per pixel.
+}
+
+
+Other notes:
+
+Optimization thoughts:
+Hey so textures have 4 channels here and we swap between two.
+The rule of "you cannot use a texture as both read and write" -- is that a hardware limitation,
+or is it a matter of beating race conditions?
+
+If it's the latter, we COULD safely write to channel rg, then channel ba, swapping back and forth.
+That's one less texture we're shuttling over the bus to the GPU.
