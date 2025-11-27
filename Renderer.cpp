@@ -5,7 +5,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 
 #include "Renderer.hpp"
-#include "args.hpp"
+#include "arg-config.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -16,16 +16,14 @@ struct Uniforms {
   float rotationMatrix[4][4];
 };
 
-Renderer::Renderer(MTL::Device *device)
-    : _device(device), _angle(0.0f), _angleDelta(angleChange) {
+Renderer::Renderer(MTL::Device *device, Config config)
+    : _device(device), _angle(0.0f), _angleDelta(angleChange), _config(config) {
   // In C++, we need to retain objects we keep around
   _device->retain();
   _commandQueue = _device->newCommandQueue();
   buildShaders();
   buildBuffers();
   buildFirstPassTex();
-  texWidth = FLAGS_w;
-  texHeight = FLAGS_h;
 }
 
 Renderer::~Renderer() {
