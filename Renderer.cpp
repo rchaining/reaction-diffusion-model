@@ -5,7 +5,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 
 #include "Renderer.hpp"
-#include "MeshLoader.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -119,14 +118,14 @@ void Renderer::buildShaders() {
 
 void Renderer::buildBuffers() {
   // monke.obj should be in the same folder as the executable
-  std::vector<Vertex> mesh = MeshLoader::loadObj("monke.obj");
-  _vertexCount = mesh.size();
-  size_t dataSize = mesh.size() * sizeof(Vertex);
+  // std::vector<Vertex> mesh = MeshLoader::loadObj("monke.obj");
+  // _vertexCount = mesh.size();
+  // size_t dataSize = mesh.size() * sizeof(Vertex);
   // Create GPU buffer
   // MTLResourceStorageModeShared = CPU writes, GPU reads
   _vertexBuffer = _device->newBuffer(dataSize, MTL::ResourceStorageModeShared);
   // Copy data from C++ Vector to Metal Buffer
-  memcpy(_vertexBuffer->contents(), mesh.data(), dataSize);
+  // memcpy(_vertexBuffer->contents(), mesh.data(), dataSize);
 }
 
 // Helper for math
@@ -149,11 +148,6 @@ Uniforms makeRotation(float angleRadians) {
   u.rotationMatrix[0][1] = s;
   u.rotationMatrix[1][0] = -s;
   u.rotationMatrix[1][1] = c;
-  // This leaves it as:
-  // [[c, -s, 0, 0],
-  //  [s, c, 0, 0],
-  //  [0, 0, 1, 0],
-  //  [0, 0, 0, 1]]
   return u;
 }
 
