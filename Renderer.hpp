@@ -7,6 +7,7 @@
 
 class Renderer {
 public:
+  Renderer(MTL::Device *device, std::string confPath, std::string configName);
   Renderer(MTL::Device *device);
   ~Renderer();
 

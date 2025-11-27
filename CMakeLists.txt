@@ -41,7 +41,6 @@ add_executable(ReactionDiffusionModel
     main.mm
     Renderer.cpp
     Renderer.hpp
-    Config.cpp
     Config.hpp
 )
 

@@ -79,3 +79,6 @@ or is it a matter of beating race conditions?
 
 If it's the latter, we COULD safely write to channel rg, then channel ba, swapping back and forth.
 That's one less texture we're shuttling over the bus to the GPU.
+
+May not actually be shuttling stuff over the bus actually. Not 100% sure though.
+That said, we'd still be saving on one texture read per pixel, which is maybe worth it (?)

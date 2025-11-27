@@ -16,32 +16,26 @@ struct Uniforms {
 };
 
 Renderer::Renderer(MTL::Device *device, std::string confPath, std::string configName)
-    : _device(device), _angle(0.0f), _angleDelta(angleChange) {
+    : _device(device) {
   _config = getConfig(confPath, configName);
   // In C++, we need to retain objects we keep around
   _device->retain();
   _commandQueue = _device->newCommandQueue();
   buildShaders();
-  buildBuffers();
 }
 
 Renderer::Renderer(MTL::Device *device)
-    : _device(device), _angle(0.0f), _angleDelta(angleChange), _config(getConfig()) {
+    : _device(device) {
   // In C++, we need to retain objects we keep around
   _device->retain();
   _commandQueue = _device->newCommandQueue();
   buildShaders();
-  buildBuffers();
 }
 
 Renderer::~Renderer() {
-  _vertexBuffer->release();
   _commandQueue->release();
   _pipelineState->release();
   _device->release();
-  _depthStencilState->release();
-  _offscreenColorTexture->release();
-  _depthTexture->release();
 }
 
 void Renderer::buildShaders() {
@@ -98,18 +92,12 @@ void Renderer::draw(CA::MetalLayer *layer) {
   MTL::RenderPassDescriptor *pass1 =
       MTL::RenderPassDescriptor::renderPassDescriptor();
   // Set color
-  pass1->colorAttachments()->object(0)->setTexture(_offscreenColorTexture);
+  pass1->colorAttachments()->object(0)->setTexture(drawable->texture());
   pass1->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
   pass1->colorAttachments()->object(0)->setClearColor(
       MTL::ClearColor::Make(0.1, 0.1, 0.1, 1));
   pass1->colorAttachments()->object(0)->setStoreAction(
       MTL::StoreActionStore); // Save for Pass 2!
-  // Set depth
-  pass1->depthAttachment()->setTexture(_depthTexture);
-  pass1->depthAttachment()->setLoadAction(MTL::LoadActionClear);
-  pass1->depthAttachment()->setStoreAction(
-      MTL::StoreActionStore); // Save for Pass 2!
-  pass1->depthAttachment()->setClearDepth(1.0);
   // Set uniforms and encode first pass
   MTL::RenderCommandEncoder *enc1 = cmdBuf->renderCommandEncoder(pass1);
   enc1->setRenderPipelineState(_pipelineState);
@@ -123,23 +111,18 @@ void Renderer::draw(CA::MetalLayer *layer) {
 }
 
 void Renderer::buildTextures() {
-  // Depth texture
-  int l = 1000, w = 1000;
-  MTL::TextureDescriptor *depthDesc =
-      MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float,
-                                                  l, w, false);
-  depthDesc->setUsage(MTL::TextureUsageRenderTarget);
-  depthDesc->setStorageMode(MTL::StorageModePrivate); // GPU only
-  _depthTexture = _device->newTexture(depthDesc);
-  depthDesc->release();
+  // Build simulation textures
+  // For now, do not bother initializing.
 
-  // First pass texture
-  MTL::TextureDescriptor *colorDesc =
-      MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatBGRA8Unorm, l,
-                                                  w, false);
-  colorDesc->setUsage(MTL::TextureUsageRenderTarget |
-                      MTL::TextureUsageShaderRead); // Allow Reading!
-  colorDesc->setStorageMode(MTL::StorageModePrivate);
-  _offscreenColorTexture = _device->newTexture(colorDesc);
-  colorDesc->release();
+  MTL::TextureDescriptor *simTexDesc =
+      MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatBGRA8Unorm,
+                                                  _config.width,
+                                                  _config.height, false);
+  simTexDesc->setUsage(MTL::TextureUsageRenderTarget | // What usage settings for the sim textures?
+                       MTL::TextureUsageShaderRead);
+
+  simTexDesc->setStorageMode(MTL::StorageModePrivate); // Set private in hopes I can keep the whole thing in the GPU.
+  _simTexture1 = _device->newTexture(simTexDesc);
+  _simTexture2 = _device->newTexture(simTexDesc);
+  simTexDesc->release();
 }

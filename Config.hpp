@@ -1,14 +1,13 @@
 #pragma once
-
+// Header only config loader.
 #include <string>
 #include <fstream>
 #include "nlohmann/json.hpp"
 
 using json = nlohmann::json;
 
+// Saved as a seperate struct here, as it must match the shader args struct exactly.
 struct SimArgs {
-    int width;
-    int height;
     float diffA;
     float diffB;
     float feed;
@@ -17,6 +16,8 @@ struct SimArgs {
 
 struct Config {
   std::string name;
+  int width;
+  int height;
   SimArgs simArgs;
 };
 
@@ -25,8 +26,8 @@ Config getConfig(std::string path, std::string configName) {
   json data = json::parse(f);
   Config config;
   config.name = configName;
-  config.simArgs.width = data[configName]["width"];
-  config.simArgs.height = data[configName]["height"];
+  config.width = data[configName]["width"];
+  config.height = data[configName]["height"];
   config.simArgs.diffA = data[configName]["diffA"];
   config.simArgs.diffB = data[configName]["diffB"];
   config.simArgs.feed = data[configName]["feed_rate"];
