@@ -1,5 +1,6 @@
 #pragma once
 // Header only config loader.
+
 #include <string>
 #include <fstream>
 #include "nlohmann/json.hpp"
@@ -21,7 +22,7 @@ struct Config {
   SimArgs simArgs;
 };
 
-Config getConfig(std::string path, std::string configName) {
+inline Config getConfig(std::string path, std::string configName) {
   std::ifstream f(path);
   json data = json::parse(f);
   Config config;
@@ -36,6 +37,6 @@ Config getConfig(std::string path, std::string configName) {
 }
 
 // Convenience for default config
-Config getConfig() {
+inline Config getConfig() {
   return getConfig("pattern-confs/pearson.json", "coral");
 }
