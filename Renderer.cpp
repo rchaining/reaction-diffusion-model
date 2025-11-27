@@ -101,8 +101,8 @@ void Renderer::draw(CA::MetalLayer *layer) {
   MTL::ComputeCommandEncoder *computeEncoder = cmdBuf->computeCommandEncoder();
   computeEncoder->setComputePipelineState(_computePipelineState); // Set the compute pipeline state
 
-  computeEncoder->setTexture(_simTexture1, 0); // Input (Read)
-  computeEncoder->setTexture(_simTexture2, 1); // Output (Write)
+  computeEncoder->setTexture(_simTexInput, 0); // Input (Read)
+  computeEncoder->setTexture(_simTexOutput, 1); // Output (Write)
 
   // Set distpatch
   MTL::Size gridSize = MTL::Size::Make(_config.width, _config.height, 1);
@@ -122,7 +122,7 @@ void Renderer::draw(CA::MetalLayer *layer) {
 
   // Set pipeline and draw
   vizEncoder->setRenderPipelineState(_vizPipelineState);
-  vizEncoder->setFragmentTexture(_simTexture2, 0);
+  vizEncoder->setFragmentTexture(_simTexOutput, 0);
   vizEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0, (NS::UInteger)3);
   vizEncoder->endEncoding();
 
@@ -143,7 +143,7 @@ void Renderer::buildTextures() {
                        MTL::TextureUsageShaderRead);
 
   simTexDesc->setStorageMode(MTL::StorageModePrivate); // Set private in hopes I can keep the whole thing in the GPU.
-  _simTexture1 = _device->newTexture(simTexDesc);
-  _simTexture2 = _device->newTexture(simTexDesc);
+  _simTexInput = _device->newTexture(simTexDesc);
+  _simTexOutput = _device->newTexture(simTexDesc);
   simTexDesc->release();
 }

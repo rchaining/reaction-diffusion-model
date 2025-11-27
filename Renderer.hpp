@@ -20,8 +20,8 @@ private:
   MTL::RenderPipelineState *_vizPipelineState;
 
   NS::UInteger _maxThreadGroupSize;
-  MTL::Texture *_simTexture1;
-  MTL::Texture *_simTexture2; // TODO: Rename to simOutputTexture, since we always swap them on CPU.
+  MTL::Texture *_simTexInput;
+  MTL::Texture *_simTexOutput;
 
   Config _config;
 
