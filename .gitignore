@@ -1,3 +1,9 @@
+# -- Metal CPP library -- 
+
+/metal-cpp/*
+
+# -- Ignore C/C++ Stuff --
+
 # Prerequisites
 *.d
 
@@ -39,3 +45,37 @@
 
 # debug information files
 *.dwo
+
+# -- Ignore CMake stuff --
+
+# Build directories and files
+/build/
+/out/
+/cmake-build-*/
+*.cmake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# Executables and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.lib
+*.a
+
+# IDE specific files (if applicable)
+.vs/ # Visual Studio
+.idea/ # CLion / IntelliJ
+*.user # Visual Studio user files
+*.suo # Visual Studio solution user options
+
+# Other temporary or generated files
+*.log
+*.tmp
+*~
