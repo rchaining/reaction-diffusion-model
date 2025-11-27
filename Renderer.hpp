@@ -16,10 +16,12 @@ public:
 private:
   MTL::Device *_device;
   MTL::CommandQueue *_commandQueue;
-  MTL::RenderPipelineState *_pipelineState;
+  MTL::ComputePipelineState *_computePipelineState;
+  MTL::RenderPipelineState *_vizPipelineState;
 
+  NS::UInteger _maxThreadGroupSize;
   MTL::Texture *_simTexture1;
-  MTL::Texture *_simTexture2;
+  MTL::Texture *_simTexture2; // TODO: Rename to simOutputTexture, since we always swap them on CPU.
 
   Config _config;
 

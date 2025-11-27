@@ -8,15 +8,10 @@
 #include <cmath>
 #include <iostream>
 
-// /10 to slow it way down while I'm fiddling.
-const float angleChange = 0.05f / 10.0f;
-
-struct Uniforms {
-  float rotationMatrix[4][4];
-};
 
 Renderer::Renderer(MTL::Device *device, std::string confPath, std::string configName)
     : _device(device) {
+  _maxThreadGroupSize = 0;
   _config = getConfig(confPath, configName);
   // In C++, we need to retain objects we keep around
   _device->retain();
@@ -34,7 +29,8 @@ Renderer::Renderer(MTL::Device *device)
 
 Renderer::~Renderer() {
   _commandQueue->release();
-  _pipelineState->release();
+  _computePipelineState->release();
+  _vizPipelineState->release();
   _device->release();
 }
 
@@ -50,60 +46,85 @@ void Renderer::buildShaders() {
     assert(false);
   }
 
-  // Build functions
-  NS::String *vertexName =
-      NS::String::string("vertex_main", NS::UTF8StringEncoding);
-  NS::String *fragName =
-      NS::String::string("fragment_main", NS::UTF8StringEncoding);
-  MTL::Function *vertexFn = pLibrary->newFunction(vertexName);
-  MTL::Function *fragFn = pLibrary->newFunction(fragName);
+  // Build compute pipeline
+  // Functions
+  NS::String *kernelName =
+      NS::String::string("sim_main", NS::UTF8StringEncoding);
+  MTL::Function *simFn = pLibrary->newFunction(kernelName);
 
-  MTL::RenderPipelineDescriptor *desc =
-      MTL::RenderPipelineDescriptor::alloc()->init();
-  desc->setVertexFunction(vertexFn);
-  desc->setFragmentFunction(fragFn);
-  desc->colorAttachments()->object(0)->setPixelFormat(
-      MTL::PixelFormat::PixelFormatBGRA8Unorm);
-
-  NS::Error *error = nullptr;
-  _pipelineState = _device->newRenderPipelineState(desc, &error);
-  if (!_pipelineState) {
-    std::cerr << "Failed to create pipeline state: "
-              << error->localizedDescription()->utf8String() << std::endl;
+  // descriptor and pipeline state
+  _computePipelineState = _device->newComputePipelineState(simFn, &pError);
+  if (!_computePipelineState) {
+    std::cerr << "Failed to create compute pipeline state: "
+              << pError->localizedDescription()->utf8String() << std::endl;
   }
+  _maxThreadGroupSize = _computePipelineState->maxTotalThreadsPerThreadgroup();
 
+  // Build viz pipeline
+  // Functions
+  NS::String *vizVertName =
+      NS::String::string("full_screen_tri", NS::UTF8StringEncoding);
+  MTL::Function *vizVertFn = pLibrary->newFunction(vizVertName);
+  NS::String *vizFragName =
+      NS::String::string("sim_visualizer", NS::UTF8StringEncoding);
+  MTL::Function *vizFragFn = pLibrary->newFunction(vizFragName);
+  
+  // descriptor and pipeline state
+  MTL::RenderPipelineDescriptor *vizDesc =
+      MTL::RenderPipelineDescriptor::alloc()->init();
+  vizDesc->setVertexFunction(vizVertFn);
+  vizDesc->setFragmentFunction(vizFragFn);
+  vizDesc->colorAttachments()->object(0)->setPixelFormat(
+      MTL::PixelFormat::PixelFormatBGRA8Unorm);
+  _vizPipelineState = _device->newRenderPipelineState(vizDesc, &pError);
+  if (!_vizPipelineState) {
+    std::cerr << "Failed to create viz pipeline state: "
+              << pError->localizedDescription()->utf8String() << std::endl;
+  }
+  
   // Cleanup
-  vertexFn->release();
-  fragFn->release();
-  desc->release();
   pLibrary->release();
-  vertexName->release();
-  fragName->release();
+  vizVertName->release();
+  vizVertFn->release();
+  vizFragName->release();
+  vizFragFn->release();
+  vizDesc->release();
 }
 
 void Renderer::draw(CA::MetalLayer *layer) {
   CA::MetalDrawable *drawable = layer->nextDrawable();
   if (!drawable)
     return;
-
   MTL::CommandBuffer *cmdBuf = _commandQueue->commandBuffer();
+  // --- Compute ---
+  // Set encoder and Input/Output texs
+  MTL::ComputeCommandEncoder *computeEncoder = cmdBuf->computeCommandEncoder();
+  computeEncoder->setComputePipelineState(_computePipelineState); // Set the compute pipeline state
 
-  // Pass 1: Render object and depth to offscreen tex
-  MTL::RenderPassDescriptor *pass1 =
-      MTL::RenderPassDescriptor::renderPassDescriptor();
-  // Set color
-  pass1->colorAttachments()->object(0)->setTexture(drawable->texture());
-  pass1->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
-  pass1->colorAttachments()->object(0)->setClearColor(
-      MTL::ClearColor::Make(0.1, 0.1, 0.1, 1));
-  pass1->colorAttachments()->object(0)->setStoreAction(
-      MTL::StoreActionStore); // Save for Pass 2!
-  // Set uniforms and encode first pass
-  MTL::RenderCommandEncoder *enc1 = cmdBuf->renderCommandEncoder(pass1);
-  enc1->setRenderPipelineState(_pipelineState);
-  enc1->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0,
-                       (NS::UInteger)3);
-  enc1->endEncoding();
+  computeEncoder->setTexture(_simTexture1, 0); // Input (Read)
+  computeEncoder->setTexture(_simTexture2, 1); // Output (Write)
+
+  // Set distpatch
+  MTL::Size gridSize = MTL::Size::Make(_config.width, _config.height, 1);
+  int maxSize = 16 < _maxThreadGroupSize ? 16 : _maxThreadGroupSize;
+  MTL::Size threadGroupSize = MTL::Size::Make(maxSize, maxSize, 1); // TODO: Make this dynamic based on max thread group size
+  computeEncoder->dispatchThreadgroups(gridSize, threadGroupSize);
+  computeEncoder->endEncoding();
+
+  // --- Viz ---
+  // Set encoder, set tex
+  MTL::RenderPassDescriptor *vizPass = MTL::RenderPassDescriptor::renderPassDescriptor();
+  vizPass->colorAttachments()->object(0)->setTexture(drawable->texture());
+  vizPass->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
+  vizPass->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+  vizPass->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+  MTL::RenderCommandEncoder *vizEncoder = cmdBuf->renderCommandEncoder(vizPass);
+
+  // Set pipeline and draw
+  vizEncoder->setRenderPipelineState(_vizPipelineState);
+  vizEncoder->setFragmentTexture(_simTexture2, 0);
+  vizEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0, (NS::UInteger)3);
+  vizEncoder->endEncoding();
 
   // --- Commit ---
   cmdBuf->presentDrawable(drawable);
