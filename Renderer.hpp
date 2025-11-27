@@ -1,8 +1,8 @@
 #pragma once
-#include "arg-config.hpp"
 #include <Foundation/Foundation.hpp>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp> // For CA::MetalLayer
+#include <vector>
 
 class Renderer {
 public:
@@ -25,8 +25,6 @@ private:
 
   float _angleDelta;
   float _angle;
-
-  Config _config;
 
   void buildShaders();
   void buildBuffers();
