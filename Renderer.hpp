@@ -3,6 +3,7 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp> // For CA::MetalLayer
 #include <vector>
+#include "Config.hpp"
 
 class Renderer {
 public:
@@ -15,18 +16,12 @@ private:
   MTL::Device *_device;
   MTL::CommandQueue *_commandQueue;
   MTL::RenderPipelineState *_pipelineState;
-  MTL::RenderPipelineState *_postPipelineState; // Pipeline for pass 2
-  MTL::DepthStencilState *_depthStencilState;
 
-  MTL::Texture *_offscreenColorTexture; // Hold output of pass 1.
-  MTL::Texture *_depthTexture;          // Cheat temp depth tex.
-  MTL::Buffer *_vertexBuffer;
-  int _vertexCount;
+  MTL::Texture *_simTexture1;
+  MTL::Texture *_simTexture2;
 
-  float _angleDelta;
-  float _angle;
+  Config _config;
 
   void buildShaders();
-  void buildBuffers();
-  void buildFirstPassTex();
+  void buildTextures();
 };

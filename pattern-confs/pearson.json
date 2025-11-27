@@ -1,0 +1,18 @@
+{
+    "coral": {
+        "width": 1000,
+        "height": 1000,
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.055,
+        "kill_rate": 0.062
+    },
+    "mitosis": {
+        "width": 1000,
+        "height": 1000,
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.055,
+        "kill_rate": 0.062
+    }
+}
