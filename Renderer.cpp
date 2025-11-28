@@ -12,18 +12,20 @@ Renderer::Renderer(MTL::Device *device, std::string confPath, std::string config
     : _device(device), _initialized(false) {
   _maxThreadGroupSize = 0;
   _config = getConfig(confPath, configName);
-  // In C++, we need to retain objects we keep around
   _device->retain();
   _commandQueue = _device->newCommandQueue();
+  buildTextures();
   buildShaders();
 }
 
 Renderer::Renderer(MTL::Device *device)
     : _device(device), _initialized(false) {
-  // In C++, we need to retain objects we keep around
+  _config = getConfig();
+  _maxThreadGroupSize = 0;
   _device->retain();
   _commandQueue = _device->newCommandQueue();
   buildShaders();
+  buildTextures();
 }
 
 Renderer::~Renderer() {
@@ -35,6 +37,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::buildShaders() {
+  std::cout << "Building shaders" << std::endl;
   // Load the library
   NS::Error *pError = nullptr;
   // Update path to match the Makefile's build directory
@@ -166,6 +169,7 @@ void Renderer::draw(CA::MetalLayer *layer) {
 }
 
 void Renderer::buildTextures() {
+  std::cout << "Building textures" << std::endl;
   // Build simulation textures
   MTL::TextureDescriptor *simTexDesc =
       MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRG32Float,

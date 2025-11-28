@@ -62,9 +62,5 @@ fragment float4 sim_visualizer(
         texture2d<float> simResult [[texture(0)]]) {
     constexpr sampler s(address::clamp_to_edge, filter::linear);
     float4 a = simResult.sample(s, in.uv);
-    if (a.r == 0.0f && a.g == 0.0f && a.b == 0.0f && a.a == 0.0f) {
-        // temporarily show white where it's empty
-        return float4(1.0f, 1.0f, 1.0f, 1.0f);
-    }
-    return float4(a.r, a.g, a.b, a.a) * 10.0f; // multiply to make it more visible. Temporarily use all channels while debugging
+    return float4(a.r, a.g, a.b, a.a) * 100.0f; // multiply to make it more visible. Temporarily use all channels while debugging
 }
