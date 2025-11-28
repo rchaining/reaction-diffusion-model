@@ -16,8 +16,11 @@ kernel void sim_main(
     uint2 gid [[thread_position_in_grid]],
     constant SimArgs &args [[buffer(3)]]
 ) {
+    // Ensure not out of bounds
+    if (gid.x >= inputTexture.get_width() || gid.y >= inputTexture.get_height()) {
+        return;
+    }
     float4 a = inputTexture.read(gid);
-    float4 b = inputTexture.read(gid);
     outputTexture.write(a, gid);
 }
 

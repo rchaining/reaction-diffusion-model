@@ -8,13 +8,11 @@
 #include <cmath>
 #include <iostream>
 
-std::vector<uint8_t> buildTexSeed(uint width, uint height) {
-  std::vector<uint8_t> seedData(width * height * 4);
+std::vector<float> buildTexSeed(uint width, uint height) {
+  std::vector<float> seedData(width * height * 2);
   for (uint i = 0; i < width * height; i++) {
-    seedData[i * 4] = rand() % 256;
-    seedData[i * 4 + 1] = rand() % 256;
-    seedData[i * 4 + 2] = rand() % 256;
-    seedData[i * 4 + 3] = rand() % 256;
+    seedData[i * 2] = rand() % 256;
+    seedData[i * 2 + 1] = rand() % 256;
   }
   return seedData;
 }
@@ -111,14 +109,19 @@ void Renderer::draw(CA::MetalLayer *layer) {
   MTL::ComputeCommandEncoder *computeEncoder = cmdBuf->computeCommandEncoder();
   computeEncoder->setComputePipelineState(_computePipelineState); // Set the compute pipeline state
 
-  computeEncoder->setTexture(_simTexInput, 0); // Input (Read)
-  computeEncoder->setTexture(_simTexOutput, 1); // Output (Write)
-
+  computeEncoder->setTexture(_simTexInput, 0);
+  computeEncoder->setTexture(_simTexOutput, 1);
+  computeEncoder->setBytes(&_config.simArgs, sizeof(SimArgs), 3);
+  
   // Set distpatch
-  MTL::Size gridSize = MTL::Size::Make(_config.width, _config.height, 1);
-  int maxSize = 16 < _maxThreadGroupSize ? 16 : _maxThreadGroupSize;
-  MTL::Size threadGroupSize = MTL::Size::Make(maxSize, maxSize, 1); // TODO: Make this dynamic based on max thread group size
-  computeEncoder->dispatchThreadgroups(gridSize, threadGroupSize);
+  NS::UInteger w = _computePipelineState->threadExecutionWidth();
+  NS::UInteger h = _computePipelineState->maxTotalThreadsPerThreadgroup() / w;
+  MTL::Size threadgroupCount;
+  threadgroupCount.width  = (_config.width  + w - 1) / w;
+  threadgroupCount.height = (_config.height + h - 1) / h;
+  threadgroupCount.depth  = 1;
+  MTL::Size threadGroupSize = MTL::Size::Make(w, h, 1);
+  computeEncoder->dispatchThreadgroups(threadgroupCount, threadGroupSize);
   computeEncoder->endEncoding();
 
   // --- Viz ---
@@ -153,7 +156,7 @@ void Renderer::buildTextures() {
   // Seed the input tex
   MTL::Region region = MTL::Region::Make2D(0, 0, _config.width, _config.height);
   NS::UInteger bytesPerRow = 4 * _config.width;
-  std::vector<uint8_t> seedData = buildTexSeed(_config.width, _config.height);
+  std::vector<float> seedData = buildTexSeed(_config.width, _config.height);
   _simTexInput->replaceRegion(region, 0, seedData.data(), bytesPerRow);
   
   simTexDesc->release();
