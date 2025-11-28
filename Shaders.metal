@@ -9,7 +9,24 @@ struct SimArgs {
 };
 
 // Simulation
+kernel void init_simulation(texture2d<float, access::write> tex [[texture(0)]],
+                            uint2 gid [[thread_position_in_grid]]) {
+    if (gid.x >= tex.get_width() || gid.y >= tex.get_height()) {
+        return;
+    }
 
+    float4 color = float4(1.0, 0.0, 0.0, 1.0); 
+
+    uint w = tex.get_width();
+    uint h = tex.get_height();
+    
+    if (gid.x > w / 2 - 10 && gid.x < w / 2 + 10 &&
+        gid.y > h / 2 - 10 && gid.y < h / 2 + 10) {
+        color.y = 1.0;
+    }
+
+    tex.write(color, gid);
+}
 kernel void sim_main(
     texture2d<float, access::read> inputTexture [[texture(0)]],
     texture2d<float, access::write> outputTexture [[texture(1)]],
@@ -45,5 +62,9 @@ fragment float4 sim_visualizer(
         texture2d<float> simResult [[texture(0)]]) {
     constexpr sampler s(address::clamp_to_edge, filter::linear);
     float4 a = simResult.sample(s, in.uv);
+    if (a.r == 0.0f && a.g == 0.0f && a.b == 0.0f && a.a == 0.0f) {
+        // temporarily show white where it's empty
+        return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
     return float4(a.r, a.g, a.b, a.a) * 10.0f; // multiply to make it more visible. Temporarily use all channels while debugging
 }

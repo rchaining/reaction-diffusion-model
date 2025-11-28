@@ -17,6 +17,7 @@ private:
   MTL::Device *_device;
   MTL::CommandQueue *_commandQueue;
   MTL::ComputePipelineState *_computePipelineState;
+  MTL::ComputePipelineState *_initPipelineState;
   MTL::RenderPipelineState *_vizPipelineState;
 
   NS::UInteger _maxThreadGroupSize;
@@ -24,7 +25,9 @@ private:
   MTL::Texture *_simTexOutput;
 
   Config _config;
+  bool _initialized;
 
   void buildShaders();
   void buildTextures();
+  void texInitializerPass(MTL::CommandBuffer* cmdBuf);
 };

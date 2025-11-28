@@ -8,33 +8,8 @@
 #include <cmath>
 #include <iostream>
 
-// Change return type to std::vector<float>
-std::vector<float> buildTexSeed(uint width, uint height) {
-    // Resize for 2 channels (Red/Green) per pixel
-    std::vector<float> seedData(width * height * 2);
-    
-    for (uint i = 0; i < width * height; i++) {
-        // 1.0f for Chemical A (Red)
-        seedData[i * 2]     = 1.0f; 
-        
-        // 0.0f for Chemical B (Green), unless we are in the "seed" square
-        float b = 0.0f;
-
-        // Create a small square of Chemical B in the center to start the reaction
-        uint x = i % width;
-        uint y = i / width;
-        if(x > width/2 - 20 && x < width/2 + 20 && 
-           y > height/2 - 20 && y < height/2 + 20) {
-            b = 1.0f; 
-        }
-        
-        seedData[i * 2 + 1] = b;
-    }
-    return seedData;
-}
-
 Renderer::Renderer(MTL::Device *device, std::string confPath, std::string configName)
-    : _device(device) {
+    : _device(device), _initialized(false) {
   _maxThreadGroupSize = 0;
   _config = getConfig(confPath, configName);
   // In C++, we need to retain objects we keep around
@@ -44,7 +19,7 @@ Renderer::Renderer(MTL::Device *device, std::string confPath, std::string config
 }
 
 Renderer::Renderer(MTL::Device *device)
-    : _device(device) {
+    : _device(device), _initialized(false) {
   // In C++, we need to retain objects we keep around
   _device->retain();
   _commandQueue = _device->newCommandQueue();
@@ -53,6 +28,7 @@ Renderer::Renderer(MTL::Device *device)
 
 Renderer::~Renderer() {
   _commandQueue->release();
+  _initPipelineState->release();
   _computePipelineState->release();
   _vizPipelineState->release();
   _device->release();
@@ -84,6 +60,13 @@ void Renderer::buildShaders() {
   }
   _maxThreadGroupSize = _computePipelineState->maxTotalThreadsPerThreadgroup();
 
+  // Initializer pipeline
+  MTL::Function* initFn = pLibrary->newFunction(NS::String::string("init_simulation", NS::UTF8StringEncoding));
+  _initPipelineState = _device->newComputePipelineState(initFn, &pError);
+  if (!_initPipelineState) {
+      std::cerr << "Failed to create init pipeline: " << pError->localizedDescription()->utf8String() << std::endl;
+  }
+  
   // Build viz pipeline
   // Functions
   NS::String *vizVertName =
@@ -107,6 +90,7 @@ void Renderer::buildShaders() {
   }
   
   // Cleanup
+  initFn->release();
   pLibrary->release();
   vizVertName->release();
   vizVertFn->release();
@@ -115,11 +99,32 @@ void Renderer::buildShaders() {
   vizDesc->release();
 }
 
+void Renderer::texInitializerPass(MTL::CommandBuffer* cmdBuf) {
+    MTL::ComputeCommandEncoder* initEncoder = cmdBuf->computeCommandEncoder();
+    initEncoder->setComputePipelineState(_initPipelineState);
+    initEncoder->setTexture(_simTexInput, 0);
+    NS::UInteger w = _initPipelineState->threadExecutionWidth();
+    NS::UInteger h = _initPipelineState->maxTotalThreadsPerThreadgroup() / w;
+    MTL::Size threadgroupCount = MTL::Size::Make((_config.width + w - 1) / w,
+                                                 (_config.height + h - 1) / h, 
+                                                 1);
+    MTL::Size threadGroupSize = MTL::Size::Make(w, h, 1);
+    initEncoder->dispatchThreadgroups(threadgroupCount, threadGroupSize);
+    initEncoder->endEncoding();
+}
+
 void Renderer::draw(CA::MetalLayer *layer) {
   CA::MetalDrawable *drawable = layer->nextDrawable();
   if (!drawable)
     return;
   MTL::CommandBuffer *cmdBuf = _commandQueue->commandBuffer();
+
+  if(!_initialized) {
+    std::cout << "First step, initializing simulation" << std::endl;
+    texInitializerPass(cmdBuf);
+    _initialized = true;
+  }
+
   // --- Compute ---
   // Set encoder and Input/Output texs
   MTL::ComputeCommandEncoder *computeEncoder = cmdBuf->computeCommandEncoder();
@@ -145,7 +150,7 @@ void Renderer::draw(CA::MetalLayer *layer) {
   vizPass->colorAttachments()->object(0)->setTexture(drawable->texture());
   vizPass->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
   vizPass->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
-  vizPass->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
+  vizPass->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(.5, .5, .5, 1));
   MTL::RenderCommandEncoder *vizEncoder = cmdBuf->renderCommandEncoder(vizPass);
   vizEncoder->setRenderPipelineState(_vizPipelineState);
   vizEncoder->setFragmentTexture(_simTexOutput, 0);
@@ -166,17 +171,11 @@ void Renderer::buildTextures() {
       MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRG32Float,
                                                   _config.width,
                                                   _config.height, false);
-  simTexDesc->setStorageMode(MTL::StorageModeShared); // Shared so I can upload an intial texture for now.
+  simTexDesc->setStorageMode(MTL::StorageModePrivate); // Shared so I can upload an intial texture for now.
   simTexDesc->setUsage(MTL::TextureUsageShaderRead |
                        MTL::TextureUsageShaderWrite);
   _simTexInput = _device->newTexture(simTexDesc);
   _simTexOutput = _device->newTexture(simTexDesc);
 
-  // Seed the input tex
-  std::vector<float> seedData = buildTexSeed(_config.width, _config.height);
-  MTL::Region region = MTL::Region::Make2D(0, 0, _config.width, _config.height);
-  NS::UInteger bytesPerRow = _config.width * 2 * sizeof(float);
-  _simTexInput->replaceRegion(region, 0, seedData.data(), bytesPerRow);
-  
   simTexDesc->release();
 }
