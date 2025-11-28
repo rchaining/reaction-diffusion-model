@@ -154,9 +154,9 @@ void Renderer::buildTextures() {
   _simTexOutput = _device->newTexture(simTexDesc);
 
   // Seed the input tex
-  MTL::Region region = MTL::Region::Make2D(0, 0, _config.width, _config.height);
-  NS::UInteger bytesPerRow = 4 * _config.width;
   std::vector<float> seedData = buildTexSeed(_config.width, _config.height);
+  MTL::Region region = MTL::Region::Make2D(0, 0, _config.width, _config.height);
+  NS::UInteger bytesPerRow = _config.width * 2 * sizeof(float);
   _simTexInput->replaceRegion(region, 0, seedData.data(), bytesPerRow);
   
   simTexDesc->release();
