@@ -1,7 +1,9 @@
 {
-    "time_step": 0.05,
+    "time_step": 0.01,
     "width": 1000,
     "height": 1000,
+    "frequency": 5.0,
+    "scale": 0.9,
     "coral": {
         "diffA": 1.0,
         "diffB": 0.5,
@@ -11,7 +13,13 @@
     "mitosis": {
         "diffA": 1.0,
         "diffB": 0.5,
+        "feed_rate": 0.0367,
+        "kill_rate": 0.0649
+    },
+    "test": {
+        "diffA": 0.01,
+        "diffB": 0.5,
         "feed_rate": 0.055,
-        "kill_rate": 0.062
+        "kill_rate": 0.0649
     }
 }

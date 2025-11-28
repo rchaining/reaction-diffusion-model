@@ -106,6 +106,7 @@ void Renderer::texInitializerPass(MTL::CommandBuffer* cmdBuf) {
     MTL::ComputeCommandEncoder* initEncoder = cmdBuf->computeCommandEncoder();
     initEncoder->setComputePipelineState(_initPipelineState);
     initEncoder->setTexture(_simTexInput, 0);
+    initEncoder->setBytes(&_config.simArgs, sizeof(SimArgs), 1);
     NS::UInteger w = _initPipelineState->threadExecutionWidth();
     NS::UInteger h = _initPipelineState->maxTotalThreadsPerThreadgroup() / w;
     MTL::Size threadgroupCount = MTL::Size::Make((_config.width + w - 1) / w,

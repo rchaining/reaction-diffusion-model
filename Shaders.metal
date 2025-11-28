@@ -2,6 +2,8 @@
 using namespace metal;
 
 struct SimArgs {
+    float frequency;
+    float scale;
     float diffA;
     float diffB;
     float feed;
@@ -10,26 +12,47 @@ struct SimArgs {
 };
 
 // Would like this to be configurable somehow. Doing so may require templating this file to generate from a config.
-#define GROUP_WIDTH 16
-#define GROUP_HEIGHT 16
-    
+#define GROUP_WIDTH 32
+#define GROUP_HEIGHT 32
+
+
+// Hash function to generate pseudo-random gradients
+float2 hash(float2 p) {
+    p = float2(dot(p, float2(127.1, 311.7)),
+               dot(p, float2(269.5, 183.3)));
+    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+
+// 2D Perlin (Gradient) Noise function
+float perlin_noise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+
+    // Quintic interpolation curve (smoother than cubic)
+    float2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    // Mix dot products of gradients
+    return mix(mix(dot(hash(i + float2(0.0, 0.0)), f - float2(0.0, 0.0)),
+                   dot(hash(i + float2(1.0, 0.0)), f - float2(1.0, 0.0)), u.x),
+               mix(dot(hash(i + float2(0.0, 1.0)), f - float2(0.0, 1.0)),
+                   dot(hash(i + float2(1.0, 1.0)), f - float2(1.0, 1.0)), u.x), u.y);
+}
+
 
 // Simulation
 kernel void init_simulation(texture2d<float, access::write> tex [[texture(0)]],
-                            uint2 gid [[thread_position_in_grid]]) {
+                            uint2 gid [[thread_position_in_grid]],
+                            constant SimArgs &args [[buffer(1)]]) {
     if (gid.x >= tex.get_width() || gid.y >= tex.get_height()) {
         return;
     }
 
-    float4 color = float4(1.0, 0.0, 0.0, 1.0); 
-
-    uint w = tex.get_width();
-    uint h = tex.get_height();
-    
-    if (gid.x > w / 2 - 10 && gid.x < w / 2 + 10 &&
-        gid.y > h / 2 - 10 && gid.y < h / 2 + 10) {
-        color.y = 1.0;
-    }
+    float2 uv = float2(gid) / float2(tex.get_width(), tex.get_height());
+    float frequency = args.frequency;
+    float scale = args.scale;
+    float n = perlin_noise(uv * frequency);
+    n = n * scale + 0.5;
+    float4 color = float4(1.0, n, 0.0, 1.0);
 
     tex.write(color, gid);
 }
@@ -75,17 +98,13 @@ kernel void sim_main(
 
     float a = center.r;
     float b = center.g;
-    float da = args.diffA;
-    float db = args.diffB;
-    float feed = args.feed;
-    float kill = args.kill;
     float n = args.timeStep;
 
     // Corresponds to laplacian weights of
     // [ 0 -1 0
     //   -1 4 -1
     //   0 -1 0]
-    float4 laplacianValue = (center * 4.0) - up - down - left - right;
+    float4 laplacian =  (center * 4.0) - up - down - left - right;
 
     // D_A, D_b: Diffusion rates for A, B
     // F: Feed rate of A
@@ -93,11 +112,16 @@ kernel void sim_main(
     // L_A, L_B: Laplacian of A, B
 
     // Grey-Scott Model
-    // A_(t+n) = n * (A(t) + D_A x L_A(t) - A x B^2 + F x (1 - A))
-    // B_(t+n) = n * (B(t) + D_B x L_B(t) + A x B^2 - (F + K) x B)
+    // A_(t+n) = A(t) + (n * (D_A * L_A(t) - A * B^2 + F * (1 - A)))
+    // B_(t+n) = B(t) + (n * (D_B * L_B(t) + A * B^2 - (F + K) * B))
 
-    float aNew = n * (a + da * laplacianValue.r - a * b * b + feed * (1 - a));
-    float bNew = n * (b + db * laplacianValue.g + a * b * b - (feed + kill) * b);
+    float reaction = a * b * b; // a * b^2
+    float deltaA = (args.diffA * laplacian.r - reaction + args.feed * (1.0 - a));
+    float deltaB = (args.diffB * laplacian.g + reaction - (args.feed + args.kill) * b);
+    float aNew = a + n * deltaA;
+    float bNew = b + n * deltaB;
+    aNew = clamp(aNew, 0.0, 1.0);
+    bNew = clamp(bNew, 0.0, 1.0);
 
     outputTexture.write(float4(aNew, bNew, 0, 0), gid);
 }
@@ -118,10 +142,53 @@ vertex VertexOutPost full_screen_tri(uint vertexID [[vertex_id]]) {
     return out;
 }
 
+// VIZUALIZER
+// (Via gemini for the color mapping)
+
+// A cosine-based palette function. 
+// Inputs: t = value (0.0 to 1.0)
+// Returns: RGB color
+float3 get_palette(float t) {
+    // These vector coefficients define the gradient "theme"
+    // Theme: "Oceanic Bioluminescence" (Blue/Purple/Cyan)
+    float3 a = float3(0.5, 0.5, 0.5);
+    float3 b = float3(0.5, 0.5, 0.5);
+    float3 c = float3(1.0, 1.0, 1.0);
+    float3 d = float3(0.30, 0.20, 0.20); 
+
+    return a + b * cos(6.28318 * (c * t + d));
+}
+
 fragment float4 sim_visualizer(
         VertexOutPost in [[stage_in]],
-        texture2d<float> simResult [[texture(0)]]) {
-    constexpr sampler s(address::clamp_to_edge, filter::linear);
-    float4 a = simResult.sample(s, in.uv);
-    return float4(a.r, a.g, a.b, a.a) * 100.0f; // multiply to make it more visible. Temporarily use all channels while debugging
+        texture2d<float> simResult [[texture(0)]]
+) {
+    constexpr sampler s(mag_filter::nearest, min_filter::nearest, address::clamp_to_edge);
+    float4 data = simResult.sample(s, in.uv);
+
+    // Read both chemicals
+    // A = Feed/Fuel (Starts at 1.0, gets eaten)
+    // B = Reaction/Coral (Starts at 0.0, grows)
+    float a = clamp(data.r, 0.0, 1.0);
+    float b = clamp(data.g, 0.0, 1.0);
+
+    // --- Layer 1: Chemical A (Background) ---
+    // We map A to a deep purple/blue. 
+    // As A gets depleted (eaten by B), this background will darken, 
+    // showing you exactly where the "fuel" is running low.
+    float3 colorA = float3(0.2, 0.0, 0.4) * a;
+
+    // --- Layer 2: Chemical B (Foreground) ---
+    // Use the cosine palette for the pattern
+    float3 paletteB = get_palette(b);
+    
+    // CRITICAL: Mask the palette so it fades to transparent where B is low.
+    // Without this, the palette's "zero" color (grey) would hide our A layer.
+    float bMask = smoothstep(0.01, 0.25, b); 
+    
+    // Combine:
+    // Start with A, then blend B on top based on its density (bMask)
+    float3 finalColor = mix(colorA, paletteB, bMask);
+
+    return float4(finalColor, 1.0);
 }
