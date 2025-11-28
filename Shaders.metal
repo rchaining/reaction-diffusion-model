@@ -37,6 +37,10 @@ vertex VertexOutPost full_screen_tri(uint vertexID [[vertex_id]]) {
     return out;
 }
 
-fragment float4 sim_visualizer(VertexOutPost in [[stage_in]]) {
-    return float4(in.uv, 0.0f, 1.0f); // TODO: Replace with actual color
+fragment float4 sim_visualizer(
+        VertexOutPost in [[stage_in]],
+        texture2d<float> simResult [[texture(1)]]) {
+    constexpr sampler s(address::clamp_to_edge, filter::linear);
+    float4 a = simResult.sample(s, in.uv);
+    return float4(a.r, a.g, a.b, a.a) * 10.0f; // multiply to make it more visible. Temporarily use all channels while debugging
 }

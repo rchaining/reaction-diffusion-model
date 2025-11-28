@@ -8,6 +8,16 @@
 #include <cmath>
 #include <iostream>
 
+std::vector<uint8_t> buildTexSeed(uint width, uint height) {
+  std::vector<uint8_t> seedData(width * height * 4);
+  for (uint i = 0; i < width * height; i++) {
+    seedData[i * 4] = rand() % 256;
+    seedData[i * 4 + 1] = rand() % 256;
+    seedData[i * 4 + 2] = rand() % 256;
+    seedData[i * 4 + 3] = rand() % 256;
+  }
+  return seedData;
+}
 
 Renderer::Renderer(MTL::Device *device, std::string confPath, std::string configName)
     : _device(device) {
@@ -112,15 +122,12 @@ void Renderer::draw(CA::MetalLayer *layer) {
   computeEncoder->endEncoding();
 
   // --- Viz ---
-  // Set encoder, set tex
   MTL::RenderPassDescriptor *vizPass = MTL::RenderPassDescriptor::renderPassDescriptor();
   vizPass->colorAttachments()->object(0)->setTexture(drawable->texture());
   vizPass->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
   vizPass->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
   vizPass->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0, 0, 0, 1));
   MTL::RenderCommandEncoder *vizEncoder = cmdBuf->renderCommandEncoder(vizPass);
-
-  // Set pipeline and draw
   vizEncoder->setRenderPipelineState(_vizPipelineState);
   vizEncoder->setFragmentTexture(_simTexOutput, 0);
   vizEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0, (NS::UInteger)3);
@@ -133,17 +140,21 @@ void Renderer::draw(CA::MetalLayer *layer) {
 
 void Renderer::buildTextures() {
   // Build simulation textures
-  // For now, do not bother initializing.
-
   MTL::TextureDescriptor *simTexDesc =
-      MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatBGRA8Unorm,
+      MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRG32Float,
                                                   _config.width,
                                                   _config.height, false);
+  simTexDesc->setStorageMode(MTL::StorageModeShared); // Shared so I can upload an intial texture for now.
   simTexDesc->setUsage(MTL::TextureUsageRenderTarget | // What usage settings for the sim textures?
-                       MTL::TextureUsageShaderRead);
-
-  simTexDesc->setStorageMode(MTL::StorageModePrivate); // Set private in hopes I can keep the whole thing in the GPU.
+                       MTL::TextureUsageShaderWrite);
   _simTexInput = _device->newTexture(simTexDesc);
   _simTexOutput = _device->newTexture(simTexDesc);
+
+  // Seed the input tex
+  MTL::Region region = MTL::Region::Make2D(0, 0, _config.width, _config.height);
+  NS::UInteger bytesPerRow = 4 * _config.width;
+  std::vector<uint8_t> seedData = buildTexSeed(_config.width, _config.height);
+  _simTexInput->replaceRegion(region, 0, seedData.data(), bytesPerRow);
+  
   simTexDesc->release();
 }
