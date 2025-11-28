@@ -8,13 +8,29 @@
 #include <cmath>
 #include <iostream>
 
+// Change return type to std::vector<float>
 std::vector<float> buildTexSeed(uint width, uint height) {
-  std::vector<float> seedData(width * height * 2);
-  for (uint i = 0; i < width * height; i++) {
-    seedData[i * 2] = rand() % 256;
-    seedData[i * 2 + 1] = rand() % 256;
-  }
-  return seedData;
+    // Resize for 2 channels (Red/Green) per pixel
+    std::vector<float> seedData(width * height * 2);
+    
+    for (uint i = 0; i < width * height; i++) {
+        // 1.0f for Chemical A (Red)
+        seedData[i * 2]     = 1.0f; 
+        
+        // 0.0f for Chemical B (Green), unless we are in the "seed" square
+        float b = 0.0f;
+
+        // Create a small square of Chemical B in the center to start the reaction
+        uint x = i % width;
+        uint y = i / width;
+        if(x > width/2 - 20 && x < width/2 + 20 && 
+           y > height/2 - 20 && y < height/2 + 20) {
+            b = 1.0f; 
+        }
+        
+        seedData[i * 2 + 1] = b;
+    }
+    return seedData;
 }
 
 Renderer::Renderer(MTL::Device *device, std::string confPath, std::string configName)
