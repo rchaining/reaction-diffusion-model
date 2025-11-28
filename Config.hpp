@@ -9,10 +9,12 @@ using json = nlohmann::json;
 
 // Saved as a seperate struct here, as it must match the shader args struct exactly.
 struct SimArgs {
-    float diffA;
-    float diffB;
-    float feed;
-    float kill;
+  // Simulation variables
+  float diffA;
+  float diffB;
+  float feed;
+  float kill;
+  float timeStep;
 };
 
 struct Config {
@@ -27,12 +29,13 @@ inline Config getConfig(std::string path, std::string configName) {
   json data = json::parse(f);
   Config config;
   config.name = configName;
-  config.width = data[configName]["width"];
-  config.height = data[configName]["height"];
+  config.width = data["width"];
+  config.height = data["height"];
   config.simArgs.diffA = data[configName]["diffA"];
   config.simArgs.diffB = data[configName]["diffB"];
   config.simArgs.feed = data[configName]["feed_rate"];
   config.simArgs.kill = data[configName]["kill_rate"];
+  config.simArgs.timeStep = data["time_step"];
   return config;
 }
 
