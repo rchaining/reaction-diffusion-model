@@ -155,6 +155,9 @@ void Renderer::draw(CA::MetalLayer *layer) {
   // --- Commit ---
   cmdBuf->presentDrawable(drawable);
   cmdBuf->commit();
+
+  // Swap textures for next frame
+  std::swap(_simTexInput, _simTexOutput);
 }
 
 void Renderer::buildTextures() {
@@ -164,7 +167,7 @@ void Renderer::buildTextures() {
                                                   _config.width,
                                                   _config.height, false);
   simTexDesc->setStorageMode(MTL::StorageModeShared); // Shared so I can upload an intial texture for now.
-  simTexDesc->setUsage(MTL::TextureUsageRenderTarget | // What usage settings for the sim textures?
+  simTexDesc->setUsage(MTL::TextureUsageShaderRead |
                        MTL::TextureUsageShaderWrite);
   _simTexInput = _device->newTexture(simTexDesc);
   _simTexOutput = _device->newTexture(simTexDesc);
