@@ -148,7 +148,7 @@ kernel void sim_main(
     // [ 0 -1 0
     //   -1 4 -1
     //   0 -1 0]
-    float4 laplacian =  (center * 4.0) - up - down - left - right;
+    float4 laplacian =  -1.0 * ((center * 4.0) - up - down - left - right);
 
     // D_A, D_b: Diffusion rates for A, B
     // F: Feed rate of A

@@ -125,32 +125,37 @@ void Renderer::draw(CA::MetalLayer *layer) {
     return;
   MTL::CommandBuffer *cmdBuf = _commandQueue->commandBuffer();
 
-  if(!_initialized) {
-    std::cout << "First step, initializing simulation" << std::endl;
-    texInitializerPass(cmdBuf);
-    _initialized = true;
-  }
+  // Removed initializer pass. WIll add config option to choose initializer logic.
+  // if(!_initialized) {
+  //   std::cout << "First step, initializing simulation" << std::endl;
+  //   texInitializerPass(cmdBuf);
+  //   _initialized = true;
+  // }
 
   // --- Compute ---
   // Set encoder and Input/Output texs
-  MTL::ComputeCommandEncoder *computeEncoder = cmdBuf->computeCommandEncoder();
-  computeEncoder->setComputePipelineState(_computePipelineState); // Set the compute pipeline state
+  for(int i = 0; i < _config.stepsPerFrame; i++) {
+    MTL::ComputeCommandEncoder *computeEncoder = cmdBuf->computeCommandEncoder();
+    computeEncoder->setComputePipelineState(_computePipelineState); // Set the compute pipeline state
 
-  computeEncoder->setTexture(_simTexInput, 0);
-  computeEncoder->setTexture(_simTexOutput, 1);
-  computeEncoder->setBytes(&_config.simArgs, sizeof(SimArgs), 3);
-  
-  // Set distpatch
-  NS::UInteger w = _computePipelineState->threadExecutionWidth();
-  NS::UInteger h = _computePipelineState->maxTotalThreadsPerThreadgroup() / w;
-  MTL::Size threadgroupCount;
-  threadgroupCount.width  = (_config.width  + w - 1) / w;
-  threadgroupCount.height = (_config.height + h - 1) / h;
-  threadgroupCount.depth  = 1;
-  MTL::Size threadGroupSize = MTL::Size::Make(w, h, 1);
-  computeEncoder->dispatchThreadgroups(threadgroupCount, threadGroupSize);
-  computeEncoder->endEncoding();
+    computeEncoder->setTexture(_simTexInput, 0);
+    computeEncoder->setTexture(_simTexOutput, 1);
+    computeEncoder->setBytes(&_config.simArgs, sizeof(SimArgs), 3);
+    
+    // Set distpatch
+    NS::UInteger w = _computePipelineState->threadExecutionWidth();
+    NS::UInteger h = _computePipelineState->maxTotalThreadsPerThreadgroup() / w;
+    MTL::Size threadgroupCount;
+    threadgroupCount.width  = (_config.width  + w - 1) / w;
+    threadgroupCount.height = (_config.height + h - 1) / h;
+    threadgroupCount.depth  = 1;
+    MTL::Size threadGroupSize = MTL::Size::Make(w, h, 1);
+    computeEncoder->dispatchThreadgroups(threadgroupCount, threadGroupSize);
+    computeEncoder->endEncoding();
 
+    // Swap textures for next frame
+    std::swap(_simTexInput, _simTexOutput);
+  }
   // --- Viz ---
   MTL::RenderPassDescriptor *vizPass = MTL::RenderPassDescriptor::renderPassDescriptor();
   vizPass->colorAttachments()->object(0)->setTexture(drawable->texture());
@@ -167,22 +172,44 @@ void Renderer::draw(CA::MetalLayer *layer) {
   cmdBuf->presentDrawable(drawable);
   cmdBuf->commit();
 
-  // Swap textures for next frame
-  std::swap(_simTexInput, _simTexOutput);
 }
 
 void Renderer::buildTextures() {
   std::cout << "Building textures" << std::endl;
-  // Build simulation textures
+
   MTL::TextureDescriptor *simTexDesc =
       MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatRG32Float,
                                                   _config.width,
                                                   _config.height, false);
-  simTexDesc->setStorageMode(MTL::StorageModePrivate); // Shared so I can upload an intial texture for now.
+
+  simTexDesc->setStorageMode(MTL::StorageModeManaged);
+  
   simTexDesc->setUsage(MTL::TextureUsageShaderRead |
                        MTL::TextureUsageShaderWrite);
+
   _simTexInput = _device->newTexture(simTexDesc);
   _simTexOutput = _device->newTexture(simTexDesc);
+  std::vector<float> seedData(_config.width * _config.height * 2);
 
+  // Configurable "Density" for the noise (how much B to sprinkle)
+  // 1% - 5% is usually good for Coral/Mazes
+  float noiseDensity = _config.noiseDensity;
+
+  for (int i = 0; i < seedData.size(); i += 2) {
+      seedData[i] = 1.0f;
+      float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+      if (r < noiseDensity) {
+          seedData[i + 1] = 1.0f;
+      } else {
+          seedData[i + 1] = 0.0f;
+      }
+  }
+
+  // Upload seed data to texture
+  MTL::Region region = MTL::Region::Make2D(0, 0, _config.width, _config.height);
+  NS::UInteger bytesPerRow = _config.width * 2 * sizeof(float);
+  _simTexInput->replaceRegion(region, 0, seedData.data(), bytesPerRow);
+  
+  // Clean up
   simTexDesc->release();
 }

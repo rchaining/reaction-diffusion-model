@@ -22,6 +22,8 @@ struct SimArgs {
 };
 
 struct Config {
+  float noiseDensity;
+  int stepsPerFrame;
   std::string name;
   int width;
   int height;
@@ -32,9 +34,20 @@ inline Config getConfig(std::string path, std::string configName) {
   std::ifstream f(path);
   json data = json::parse(f);
   Config config;
+  // Global config values
   config.name = configName;
   config.width = data["width"];
   config.height = data["height"];
+  config.stepsPerFrame = data["steps_per_frame"];
+  config.noiseDensity = data["noise_density"];
+  // Simulations specific overrides for global confs
+  if (data[configName].contains("noise_density")) {
+    config.noiseDensity = data[configName]["noise_density"];
+  } 
+  if (data[configName].contains("steps_per_frame")) {
+    config.stepsPerFrame = data[configName]["steps_per_frame"];
+  }
+  // Simulation args
   config.simArgs.frequency = data[configName]["frequency"];
   config.simArgs.scale = data[configName]["scale"];
   config.simArgs.diffA = data[configName]["diffA"];

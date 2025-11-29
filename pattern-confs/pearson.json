@@ -1,7 +1,9 @@
 {
-    "time_step": 0.01,
-    "width": 250,
-    "height": 250,
+    "noise_density": 0.05,
+    "time_step": 0.15,
+    "steps_per_frame": 5,
+    "width": 500,
+    "height": 500,
     "coral": {
         "frequency": 7.0,
         "scale": 3.0,
@@ -11,6 +13,8 @@
         "kill_rate": 0.062
     },
     "mitosis": {
+        "steps_per_frame": 20,
+        "noise_density": 0.03,
         "frequency": 3.5,
         "scale": 1.5,
         "diffA": 1.0,
@@ -27,6 +31,7 @@
         "kill_rate": 0.062
     },
     "pulsating_solitons": {
+        "noise_density": 0.02,
         "frequency": 4.0,
         "scale": 1.5,
         "diffA": 1.0,
@@ -35,6 +40,7 @@
         "kill_rate": 0.06
     },
     "worms": {
+        "steps_per_frame": 20,
         "frequency": 6.0,
         "scale": 3.0,
         "diffA": 1.0,
