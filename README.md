@@ -67,8 +67,11 @@ Configurable Parameters:
 - feed_rate ($F$): Rate at which chemical A is added.
 - kill_rate ($K$): Rate at which chemical B is removed.
 - diffA / diffB: Diffusion rates for species A and B.
-- time_step: Simulation speed.
+- time_step: ~~Simulation speed.~~ Simulation accuracy
+- steps_per_frame: Number of steps to take per frame. Effectively controls simulation speed.
 - noise_density: Initial random distribution density.
+
+noise_density and steps_per_frame can be configured globally, or independent to the pattern. The parser defaults to the global setting if the pattern does not define a value.
 
 ## License
 This project relies on metal-cpp and nlohmann/json. Please refer to their respective licenses in the metal-cpp folder and build cache.
