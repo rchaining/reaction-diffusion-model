@@ -74,6 +74,8 @@ kernel void sim_main(
     uint2 localPos = tid + uint2(1, 1);
     sharedMemory[localPos.x][localPos.y] = inputTexture.read(gid);
     // Load the skirt around the edge of the grid
+    // Would be good to wrap to edges.
+    // I think we underflow when gid.x or gid.y == 0. That should only be the bottom or the top of the grid though.
     if (tid.y == 0) {
         sharedMemory[localPos.x][0] = inputTexture.read(gid - uint2(0, 1));
     }

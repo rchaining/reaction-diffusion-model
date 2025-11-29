@@ -11,6 +11,7 @@
 Renderer::Renderer(MTL::Device *device, std::string confPath, std::string configName)
     : _device(device), _initialized(false) {
   _maxThreadGroupSize = 0;
+  std::cout << "Loading config: " << configName << " from " << confPath << std::endl;
   _config = getConfig(confPath, configName);
   _device->retain();
   _commandQueue = _device->newCommandQueue();
@@ -20,6 +21,7 @@ Renderer::Renderer(MTL::Device *device, std::string confPath, std::string config
 
 Renderer::Renderer(MTL::Device *device)
     : _device(device), _initialized(false) {
+  std::cout << "Loading default config" << std::endl;
   _config = getConfig();
   _maxThreadGroupSize = 0;
   _device->retain();

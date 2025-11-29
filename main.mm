@@ -9,7 +9,14 @@ const int WIDTH = 1000;
 const int HEIGHT = 1000;
 
 
-int main() {
+int main(int argc, char** argv) {
+    std::string confPath = "pattern-confs/pearson.json";
+    std::string configName;
+    if (argc > 1) {
+        configName = argv[1];
+    } else {
+        configName = "coral";
+    }
     NSApplication* app = [NSApplication sharedApplication];
     [app setActivationPolicy:NSApplicationActivationPolicyRegular];
 
@@ -34,7 +41,7 @@ int main() {
     // 3. Create C++ Renderer
     // BRIDGE CAST: (__bridge void*) casts the Obj-C pointer to a C pointer
     MTL::Device* cppDevice = (__bridge MTL::Device*)device;
-    Renderer* renderer = new Renderer(cppDevice);
+    Renderer* renderer = new Renderer(cppDevice, confPath, configName);
 
     [window makeKeyAndOrderFront:nil];
     [app activateIgnoringOtherApps:YES];

@@ -1,9 +1,9 @@
 {
     "time_step": 0.01,
-    "width": 1000,
-    "height": 1000,
-    "frequency": 5.0,
-    "scale": 0.9,
+    "width": 250,
+    "height": 250,
+    "frequency": 10.0,
+    "scale": 3.0,
     "coral": {
         "diffA": 1.0,
         "diffB": 0.5,
@@ -15,6 +15,48 @@
         "diffB": 0.5,
         "feed_rate": 0.0367,
         "kill_rate": 0.0649
+    },
+    "solitons": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.03,
+        "kill_rate": 0.062
+    },
+    "pulsating_solitons": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.025,
+        "kill_rate": 0.06
+    },
+    "worms": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.078,
+        "kill_rate": 0.061
+    },
+    "mazes": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.029,
+        "kill_rate": 0.057
+    },
+    "holes": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.039,
+        "kill_rate": 0.058
+    },
+    "u_skate_world": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.062,
+        "kill_rate": 0.0609
+    },
+    "chaos": {
+        "diffA": 1.0,
+        "diffB": 0.5,
+        "feed_rate": 0.026,
+        "kill_rate": 0.051
     },
     "test": {
         "diffA": 0.01,
