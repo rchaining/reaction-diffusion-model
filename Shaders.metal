@@ -76,6 +76,8 @@ kernel void sim_main(
     // Load the skirt around the edge of the grid
     // Would be good to wrap to edges.
     // I think we underflow when gid.x or gid.y == 0. That should only be the bottom or the top of the grid though.
+    
+    // TODO: Flatten the branching logic to avoid slowing the threadgroup.
     if (tid.y == 0 && tid.x == 0) {
         int readPos;
         if (gid.x == 0 && gid.y == 0) {

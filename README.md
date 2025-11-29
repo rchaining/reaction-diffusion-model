@@ -5,6 +5,8 @@ A GPU-accelerated implementation of the [Gray-Scott Reaction-Diffusion model](ht
 I can't confirm this will work on other MacOSs -- I haven't ironed out all the GPU stuff yet, so some of the hardcoded values may be specific to my Apple Silicon chip.
 It almost certianly won't work on Intel Macs.
 
+This is a learning project to get familiar with Compute Shaders using Metal. Shaders.metal contains the shader code. The GPU pipeline computes the simulation steps each frame and then a visualizer fragment shader converts the simulation state into a color rendered to the window.
+
 ![Coral Simulation Pattern](/img/coral.png)
 *Figure 1: Coral pattern simulation. Generated with `./ReactionDiffusionModel coral`*
 

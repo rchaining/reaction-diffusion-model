@@ -2,7 +2,6 @@
 #define NS_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
-#define TINYOBJLOADER_IMPLEMENTATION
 
 #include "Renderer.hpp"
 #include <cmath>
