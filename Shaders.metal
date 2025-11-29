@@ -76,17 +76,59 @@ kernel void sim_main(
     // Load the skirt around the edge of the grid
     // Would be good to wrap to edges.
     // I think we underflow when gid.x or gid.y == 0. That should only be the bottom or the top of the grid though.
+    if (tid.y == 0 && tid.x == 0) {
+        int readPos;
+        if (gid.x == 0 && gid.y == 0) {
+            readPos = inputTexture.get_width() - 1;
+        } else {
+            readPos = gid.x - 1;
+        }
+        sharedMemory[0][0] = inputTexture.read(uint2(readPos, gid.y));
+    }
+    if (tid.y == GROUP_HEIGHT - 1 && tid.x == GROUP_WIDTH - 1) {
+        int readPos;
+        if (gid.x == inputTexture.get_width() - 1 && gid.y == inputTexture.get_height() - 1) {
+            readPos = 0;
+        } else {
+            readPos = gid.x + 1;
+        }
+        sharedMemory[GROUP_WIDTH + 1][GROUP_HEIGHT + 1] = inputTexture.read(uint2(readPos, gid.y));
+    }
     if (tid.y == 0) {
-        sharedMemory[localPos.x][0] = inputTexture.read(gid - uint2(0, 1));
+        int readPos;
+        if (gid.y == 0) {
+            readPos = inputTexture.get_height() - 1;
+        } else {
+            readPos = gid.y - 1;
+        }
+        sharedMemory[localPos.x][0] = inputTexture.read(uint2(gid.x, readPos));
     }
     if (tid.x == 0) {
-        sharedMemory[0][localPos.y] = inputTexture.read(gid - uint2(1, 0));
+        int readPos;
+        if (gid.x == 0) {
+            readPos = inputTexture.get_width() - 1;
+        } else {
+            readPos = gid.x - 1;
+        }
+        sharedMemory[0][localPos.y] = inputTexture.read(uint2(readPos, gid.y));
     }
     if (tid.y == GROUP_HEIGHT - 1) {
-        sharedMemory[localPos.x][GROUP_HEIGHT + 1] = inputTexture.read(gid + uint2(0, 1));
+            int readPos;
+        if (gid.y == inputTexture.get_height() - 1) {
+            readPos = 0;
+        } else {
+            readPos = gid.y + 1;
+        }
+        sharedMemory[localPos.x][GROUP_HEIGHT + 1] = inputTexture.read(uint2(gid.x, readPos));
     }
     if (tid.x == GROUP_WIDTH - 1) {
-        sharedMemory[GROUP_WIDTH + 1][localPos.y] = inputTexture.read(gid + uint2(1, 0));
+        int readPos;
+        if (gid.x == inputTexture.get_width() - 1) {
+            readPos = 0;
+        } else {
+            readPos = gid.x + 1;
+        }
+        sharedMemory[GROUP_WIDTH + 1][localPos.y] = inputTexture.read(uint2(readPos, gid.y));
     }
 
     // Sync -- wait until everything finished wiritng to shared memory
