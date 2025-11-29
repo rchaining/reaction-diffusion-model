@@ -46,6 +46,14 @@ void Renderer::buildShaders() {
   MTL::Library *pLibrary = _device->newLibrary(
       NS::String::string("./build/default.metallib", NS::UTF8StringEncoding),
       &pError);
+  
+  if (!pLibrary) {
+      // Try loading from current directory (for release/packaged builds)
+      pLibrary = _device->newLibrary(
+          NS::String::string("default.metallib", NS::UTF8StringEncoding),
+          &pError);
+  }
+
   if (!pLibrary) {
     __builtin_printf("%s", pError->localizedDescription()->utf8String());
     assert(false);

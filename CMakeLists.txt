@@ -62,3 +62,14 @@ target_include_directories(ReactionDiffusionModel PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/metal-cpp
 )
+
+# --- Installation and Packaging ---
+
+install(TARGETS ReactionDiffusionModel DESTINATION .)
+install(FILES ${SHADER_LIB} DESTINATION .)
+install(DIRECTORY pattern-confs DESTINATION .)
+
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_PACKAGE_FILE_NAME "ReactionDiffusionModel-Release")
+set(CPACK_PACKAGE_DIRECTORY "${CMAKE_SOURCE_DIR}/release")
+include(CPack)
