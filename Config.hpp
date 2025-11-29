@@ -35,8 +35,8 @@ inline Config getConfig(std::string path, std::string configName) {
   config.name = configName;
   config.width = data["width"];
   config.height = data["height"];
-  config.simArgs.frequency = data["frequency"];
-  config.simArgs.scale = data["scale"];
+  config.simArgs.frequency = data[configName]["frequency"];
+  config.simArgs.scale = data[configName]["scale"];
   config.simArgs.diffA = data[configName]["diffA"];
   config.simArgs.diffB = data[configName]["diffB"];
   config.simArgs.feed = data[configName]["feed_rate"];
